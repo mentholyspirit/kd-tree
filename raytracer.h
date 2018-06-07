@@ -1,6 +1,7 @@
 #pragma once
 #include <math.h>
 #include "ply_reader.h"
+#include "kdtree.h"
 
 struct Color
 {
@@ -17,15 +18,13 @@ public:
         uint16_t resolutionX = 640,
         uint16_t resolutionY = 480,
         float fov = M_PI / 6,
-        Vector3 cameraPosition = Vector3(0, 0, 0),
-        Vector3 forward = Vector3(0, 1, 0))
+        Vector3 cameraPosition = Vector3(0, 0, 0))
     {
         m_Model = model;
         m_ResolutionX = resolutionX;
         m_ResolutionY = resolutionY;
         m_FOV = fov;
         m_CameraPosition = cameraPosition;
-        m_Forward = forward;
     }
 
     void SetModel(PLY_Model* model)
@@ -36,11 +35,6 @@ public:
     void SetCameraPosition(Vector3 cameraPosition)
     {
         m_CameraPosition = cameraPosition;
-    }
-
-    void SetForward(Vector3 forward)
-    {
-        m_Forward = forward;
     }
 
     void SetResolution(uint16_t resolutionX, uint16_t resolutionY)
@@ -54,9 +48,11 @@ public:
         m_FOV = fov;
     }
 
-    Color GetPixel(uint16_t x, uint16_t y);
+    void Setup();
 
-    std::vector<Color> Trace();
+    Color GetPixel(uint16_t x, uint16_t y) const;
+
+    std::vector<Color> Trace() const;
 
 private:
     PLY_Model* m_Model;
@@ -64,5 +60,5 @@ private:
     uint16_t m_ResolutionY;
     float m_FOV;
     Vector3 m_CameraPosition;
-    Vector3 m_Forward;
+    std::unique_ptr<KDTree> m_KDTree;
 };

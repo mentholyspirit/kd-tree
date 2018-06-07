@@ -72,4 +72,13 @@ struct Vector3
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x);
     }
+
+    inline const float& operator[](int index) const
+    {
+        return reinterpret_cast<const float*>(this)[index];
+    }
+    inline float& operator[](int index)
+    {
+        return reinterpret_cast<float*>(const_cast<Vector3*>(this))[index];
+    }
 };

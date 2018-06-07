@@ -7,21 +7,16 @@
 
 int main(int argv, char** argc)
 {
-    Vector3 asd;
-    asd.x = argv;
-    Triangle t((Vector3()), (Vector3()), (Vector3()));
     int width = 640, height = 480;
-    t.vertices[0] = asd;
-    std::unique_ptr<PLY_Model> model = Read_PLY_Model("happy_vrip_res4.ply");
+    //std::unique_ptr<PLY_Model> model = Read_PLY_Model("happy_vrip_res4.ply");
+    std::unique_ptr<PLY_Model> model = Read_PLY_Model("happy_vrip.ply");
     Raytracer raytracer;
     raytracer.SetModel(model.get());
     raytracer.SetResolution(width, height);
-    //raytracer.GetPixel(5, 12);
-    raytracer.SetCameraPosition(Vector3(0.0f, 0.0f, 0.5f));
+    raytracer.SetFOV(M_PI / 6);
+    raytracer.SetCameraPosition(Vector3(0.0f, 0.15f, 0.5f));
+    raytracer.Setup();
     std::vector<Color> image = raytracer.Trace();
     Write_Tga("image.tga", width, height, image.data());
-
-    //t.vertices[0].x = model->Get_Coordinate(0, 1, 0);
-     printf("ASD:%lu\n", sizeof(Triangle));
     return 0;
 }

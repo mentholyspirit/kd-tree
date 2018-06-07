@@ -49,6 +49,8 @@ std::unique_ptr<PLY_Model> Read_PLY_Model(const char *filename)
 		float val = 0;
 		fscanf(file, "%f", &val);
 		vertex_data.push_back(val);
+		res->aabb.min[(Axis)(i % 3)] = std::min(val, res->aabb.min[(Axis)(i % 3)]);
+		res->aabb.max[(Axis)(i % 3)] = std::max(val, res->aabb.max[(Axis)(i % 3)]);
 	}
 
 	// Read face (triangles) data
@@ -66,8 +68,6 @@ std::unique_ptr<PLY_Model> Read_PLY_Model(const char *filename)
 				Vector3(vertex_data[pc * 3], vertex_data[pc * 3 + 1], vertex_data[pc * 3 + 2]));
 		res->triangles.push_back(t);
 		res->triangleNormals.push_back(t.GetNormal());
-
-		
 	}
 
 	fclose(file);

@@ -9,11 +9,13 @@
 #include <float.h>
 
 #include "triangle.h"
+#include "aabb.h"
 
 struct PLY_Model
 {
 	std::vector<Triangle> triangles;
 	std::vector<Vector3> triangleNormals;
+	AABB aabb;
 };
 
 // Note: This is not a general PLY model reader, it works only with the

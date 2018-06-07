@@ -1,5 +1,14 @@
 #pragma once
+#include <algorithm>
 #include "vector3.h"
+
+enum Axis : unsigned char
+{
+    kAxisX,
+    kAxisY,
+    kAxisZ,
+    kAxesCount
+};
 
 struct Triangle
 {
@@ -10,6 +19,16 @@ struct Triangle
         vertices[0] = a;
         vertices[1] = b;
         vertices[2] = c;
+    }
+
+    inline float GetAxisMin(Axis axis) const
+    {
+        return std::min(std::min(vertices[0][axis], vertices[1][axis]), vertices[2][axis]);
+    }
+
+    inline float GetAxisMax(Axis axis) const
+    {
+        return std::max(std::max(vertices[0][axis], vertices[1][axis]), vertices[2][axis]);
     }
 
     inline Vector3 GetNormal() const
