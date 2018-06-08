@@ -1,9 +1,32 @@
-SOURCES := hmq_test.cpp ply_reader.cpp tga_saver.cpp raytracer.cpp aabb.cpp kdtree.cpp kdnode.cpp
-HEADERS := ply_reader.h tga_saver.h vector3.h triangle.h ray.h raytracer.h aabb.h kdtree.h kdnode.h
-OBJS := $(SOURCES:.cpp=.o)
-CXXFLAGS += -std=c++17 -Os
+CXX ?= g++
+LD := $(CXX)
+CXXFLAGS := -std=c++17 -pedantic -Werror
+CXXFLAGS += -O3
 
-all: hmq_test
+ALL_SOURCES := $(wildcard *.cpp)
+ALL_HEADERS := $(wildcard *.h)
+MAIN_CPP := hmq_test.cpp
+TEST_CPP := unit_test.cpp
+MAIN_EXECUTABLE := hmq_test
+TEST_EXECUTABLE := unit_test
+UNIT_TEST_SOURCES := $(filter-out $(MAIN_CPP), $(ALL_SOURCES))
+MAIN_SOURCES := $(filter-out $(TEST_CPP), $(ALL_SOURCES))
 
-hmq_test: $(OBJS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o hmq_test $(OBJS) $(LFLAGS) $(LIBS)
+.PHONY : build
+build : $(MAIN_SOURCES) $(ALL_HEADERS)
+	$(CXX) $(CXXFLAGS) $(MAIN_SOURCES) -o $(MAIN_EXECUTABLE)
+
+.PHONY : build_test
+build_test : $(UNIT_TEST_SOURCES) $(ALL_HEADERS)
+	$(CXX) $(CXXFLAGS) $(UNIT_TEST_SOURCES) -o $(TEST_EXECUTABLE)
+
+.PHONY : test
+test : build_test
+	./unit_test
+
+.PHONY : all
+all : build run_test
+
+.PHONY : clean
+clean :
+	rm -f *.o $(MAIN_EXECUTABLE) $(TEST_EXECUTABLE)

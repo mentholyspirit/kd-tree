@@ -17,7 +17,7 @@ public:
         PLY_Model* model = nullptr,
         uint16_t resolutionX = 640,
         uint16_t resolutionY = 480,
-        float fov = M_PI / 6,
+        float fov = (float)M_PI / 6.0f,
         Vector3 cameraPosition = Vector3(0, 0, 0))
     {
         m_Model = model;
@@ -48,6 +48,11 @@ public:
         m_FOV = fov;
     }
 
+    void SetUseKDTree(bool useKDTree)
+    {
+        m_UseKDTree = useKDTree;
+    }
+
     void Setup();
 
     Color GetPixel(uint16_t x, uint16_t y) const;
@@ -61,4 +66,5 @@ private:
     float m_FOV;
     Vector3 m_CameraPosition;
     std::unique_ptr<KDTree> m_KDTree;
+    bool m_UseKDTree;
 };

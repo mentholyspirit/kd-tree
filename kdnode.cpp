@@ -5,7 +5,7 @@
 
 KDNode::KDNode() {}
 
-enum SplitSide : char
+enum SplitSide : uint8_t
 {
     kSplitSideLeft,
     kSplitSideRight,
@@ -13,9 +13,9 @@ enum SplitSide : char
 };
 
 //These values are estimations of traversal and intersection cost, λ bias is to reward non-flat empty nodes
-#define LAMBDA_BIAS 0.9
-#define K_TRAVERSAL 100.0
-#define K_INTERSECTION 1.0
+#define LAMBDA_BIAS 0.9f
+#define K_TRAVERSAL 100.0f
+#define K_INTERSECTION 1.0f
 
 inline float CalculateSurfaceArea(const AABB& aabb)
 {
@@ -25,7 +25,7 @@ inline float CalculateSurfaceArea(const AABB& aabb)
     return (width * height + depth * height + depth * width) * 2;
 }
 
-inline void SplitBox(const AABB& aabb, float pos, char axis, __restrict AABB* left, __restrict AABB* right)
+inline void SplitBox(const AABB& aabb, float pos, uint8_t axis, __restrict AABB* left, __restrict AABB* right)
 {
     *left = aabb;
     *right = aabb;
@@ -43,7 +43,7 @@ inline float UnitCost(float surfaceRatioL, float surfaceRatioR, float leftTriang
     return cost;
 }
 
-inline float SurfaceAreaHeuristics(const AABB& parentVoxel, float rcpParentSurface, float pos, int axis, size_t leftTriangles, size_t rightTriangles, float planarTriangles, SplitSide* side)
+inline float SurfaceAreaHeuristics(const AABB& parentVoxel, float rcpParentSurface, float pos, uint8_t axis, size_t leftTriangles, size_t rightTriangles, float planarTriangles, SplitSide* side)
 {
     bool isEdge = (pos == parentVoxel.min[axis] || pos == parentVoxel.max[axis]);
     if (isEdge)
@@ -71,9 +71,9 @@ inline float SurfaceAreaHeuristics(const AABB& parentVoxel, float rcpParentSurfa
 static float findPlane(const std::vector<Triangle>& triangles, const AABB& aabb, const std::vector<SAHEvent>* eventList, Axis* bestAxis, SplitSide* bestSide, float* bestCost)
 {
     *bestCost = std::numeric_limits<float>::infinity();
-    float rcpParentSurface = 1.0 / CalculateSurfaceArea(aabb);
-    float bestSplit = 0;
-    for (unsigned char k = kAxisX; k < kAxesCount; k++)
+    float rcpParentSurface = 1.0f / CalculateSurfaceArea(aabb);
+    float bestSplit = 0.0f;
+    for (uint8_t k = kAxisX; k < kAxesCount; ++k)
     {
         const std::vector<SAHEvent>& events = eventList[k];
         int eventsLength = (int)events.size();
@@ -121,7 +121,7 @@ static float findPlane(const std::vector<Triangle>& triangles, const AABB& aabb,
 
 inline void ClassifyLeftRightBoth(const std::vector<SAHEvent>& axisEvents, float splitPos, int planarSide, std::vector<SplitSide>& sides)
 {
-    for (int i = 0; i < axisEvents.size(); i++)
+    for (int i = 0; i < axisEvents.size(); ++i)
     {
         const SAHEvent& event = axisEvents[i];
         //calculate how many events lie on each side of the split plane and save the side of the triangle for later sorting
@@ -151,7 +151,7 @@ inline void SplitTriangles(const std::vector<Triangle>& faces, const std::vector
 {
     Tl.reserve(faces.size());
     Tr.reserve(faces.size());
-    for (int i = 0; i < faces.size(); i++)
+    for (int i = 0; i < faces.size(); ++i)
     {
         SplitSide side = sides[i];
         //split the triangle list, while assigning the new id's to a list
@@ -170,12 +170,12 @@ inline void SplitTriangles(const std::vector<Triangle>& faces, const std::vector
 
 inline void SplitEvents(const std::vector<SAHEvent>* events, const std::vector<SplitSide>& sides, std::vector<SAHEvent>* leftEvents, std::vector<SAHEvent>* rightEvents, const std::vector<int>* triangleMap)
 {
-    for (int k = 0; k < kAxesCount; k++)
+    for (int k = 0; k < kAxesCount; ++k)
     {
         leftEvents[k].reserve(events[k].size());
         rightEvents[k].reserve(events[k].size());
         const std::vector<SAHEvent>& axisEvents = events[k];
-        for (int i = 0; i < axisEvents.size(); i++)
+        for (int i = 0; i < axisEvents.size(); ++i)
         {
             SAHEvent event = axisEvents[i];
             SplitSide side = sides[event.tri];
@@ -199,7 +199,7 @@ inline void SplitEvents(const std::vector<SAHEvent>* events, const std::vector<S
 //create two new events each time an event is cut in half by the split plane
 inline void CreateStrandedEvents(const std::vector<Triangle>& faces, const std::vector<SplitSide>& sides, const AABB& leftAABB, const AABB& rightAABB, std::vector<Triangle>& Tl, std::vector<Triangle>& Tr, std::vector<SAHEvent>* leftSplitEvents, std::vector<SAHEvent>* rightSplitEvents)
 {
-    for (int i = 0; i < faces.size(); i++)
+    for (int i = 0; i < faces.size(); ++i)
     {
         if (sides[i] == kSplitSideBoth)
         {
@@ -208,7 +208,7 @@ inline void CreateStrandedEvents(const std::vector<Triangle>& faces, const std::
             int idR = (int)Tr.size();
             Tl.push_back(tri);
             Tr.push_back(tri);
-            for (int k = 0; k < kAxesCount; k++)
+            for (int k = 0; k < kAxesCount; ++k)
             {
                 //if triangle is perpendicular to the axis (=lies inside the split plane), create two planar events
                 if (fabsf(tri.GetNormal()[k]) == 1.0)
@@ -249,7 +249,7 @@ inline void CreateStrandedEvents(const std::vector<Triangle>& faces, const std::
 
 inline void SortAndInsertSplitEvents(std::vector<SAHEvent>* leftEvents, std::vector<SAHEvent>* rightEvents, std::vector<SAHEvent>* leftSplitEvents, std::vector<SAHEvent>* rightSplitEvents)
 {
-    for (int k = 0; k < kAxesCount; k++)
+    for (int k = 0; k < kAxesCount; ++k)
     {
 
         //We sort these two, but they are usually really small and it is mostly sorted already
@@ -320,7 +320,7 @@ KDNode* KDNode::CreateNode(const std::vector<Triangle>& faces, const AABB& aabb,
         node->m_AABB = aabb;
         node->m_Left = nullptr;
         node->m_Right = nullptr;
-        for (int i = 0; i < faces.size(); i++)
+        for (int i = 0; i < faces.size(); ++i)
         {
             const Triangle& tri = faces[i];
             node->triangles.push_back(tri);

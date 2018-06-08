@@ -27,7 +27,7 @@ struct Vector3
 
     inline Vector3 Normalized()
     {
-        return MultiplyScalar(*this, 1.0 / Magnitude());
+        return MultiplyScalar(*this, 1.0f / Magnitude());
     }
 
     inline Vector3 operator*(float other) const

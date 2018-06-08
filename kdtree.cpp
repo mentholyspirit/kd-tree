@@ -4,10 +4,10 @@
 static void CreateEventList(const std::vector<Triangle>& triangles, std::vector<SAHEvent>* events)
 {
     //create "events" for SAH in each dimension and sort them to effectively sweep when finding splits
-    for (char k = 0; k < kAxesCount; k++)
+    for (uint8_t k = 0; k < kAxesCount; ++k)
     {
         events[k].reserve(triangles.size() * 2);
-        for (int i = 0; i < triangles.size(); i++)
+        for (int i = 0; i < triangles.size(); ++i)
         {
             const Triangle& tri = triangles[i];
             if (fabsf(tri.GetNormal()[k]) == 1.0)
