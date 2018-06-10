@@ -18,13 +18,15 @@ public:
         uint16_t resolutionX = 640,
         uint16_t resolutionY = 480,
         float fov = (float)M_PI / 6.0f,
-        Vector3 cameraPosition = Vector3(0, 0, 0))
+        Vector3 cameraPosition = Vector3(0, 0, 0),
+        Vector3 forward = Vector3(0, 0, 1))
     {
         m_Model = model;
         m_ResolutionX = resolutionX;
         m_ResolutionY = resolutionY;
         m_FOV = fov;
         m_CameraPosition = cameraPosition;
+        m_Forward = forward.Normalized();
     }
 
     void SetModel(PLY_Model* model)
@@ -35,6 +37,13 @@ public:
     void SetCameraPosition(Vector3 cameraPosition)
     {
         m_CameraPosition = cameraPosition;
+    }
+
+    void SetForward(Vector3 forward)
+    {
+        m_Forward = forward.Normalized();
+        m_Left = Vector3::Cross(m_Forward, Vector3(0, 1, 0)).Normalized();
+        m_Down = Vector3::Cross(m_Forward, m_Left).Normalized();
     }
 
     void SetResolution(uint16_t resolutionX, uint16_t resolutionY)
@@ -65,6 +74,9 @@ private:
     uint16_t m_ResolutionY;
     float m_FOV;
     Vector3 m_CameraPosition;
+    Vector3 m_Forward;
+    Vector3 m_Left;
+    Vector3 m_Down;
     std::unique_ptr<KDTree> m_KDTree;
     bool m_UseKDTree;
 };

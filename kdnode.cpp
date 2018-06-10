@@ -13,9 +13,9 @@ enum SplitSide : uint8_t
 };
 
 //These values are estimations of traversal and intersection cost, λ bias is to reward non-flat empty nodes
-#define LAMBDA_BIAS 0.9f
-#define K_TRAVERSAL 100.0f
-#define K_INTERSECTION 1.0f
+#define LAMBDA_BIAS 0.8f
+#define K_TRAVERSAL 1.0f
+#define K_INTERSECTION 0.1f
 
 inline float CalculateSurfaceArea(const AABB& aabb)
 {

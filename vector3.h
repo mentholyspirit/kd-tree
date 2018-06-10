@@ -45,6 +45,11 @@ struct Vector3
         return Add(*this, other);
     }
 
+    inline Vector3 operator+=(const Vector3& other)
+    {
+        return *this = Add(*this, other);
+    }
+
     inline static Vector3 MultiplyScalar(const Vector3& a, float s)
     {
         return Vector3(a.x * s, a.y * s, a.z * s);

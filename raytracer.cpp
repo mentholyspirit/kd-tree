@@ -2,7 +2,7 @@
 #include "triangle.h"
 #include "ray.h"
 #include <chrono>
-
+#include <pthread.h>
 
 //[Möller-Trumbore] http://www.graphics.cornell.edu/pubs/1997/MT97.pdf
 static inline bool TestTriangle(const Triangle& triangle, const Ray& ray, float* outT)
@@ -86,9 +86,9 @@ static const Triangle* Travese(Ray& ray, const KDNode* node, float* outDistSq = 
     return nullptr;
 }
 
-static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, float rayX, float rayY, const KDTree* kdTree = nullptr)
+static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, Vector3 rayDir, const KDTree* kdTree = nullptr)
 {
-    Ray ray = Ray(cameraPosition, Vector3(rayX, rayY, -1).Normalized());
+    Ray ray = Ray(cameraPosition, rayDir.Normalized());
     const Triangle* triangle = nullptr;
     if (kdTree != nullptr)
     {
@@ -105,10 +105,31 @@ static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vec
         Vector3 n = triangle->GetNormal();
         n = Vector3(0.5f, 1.0f, 1.0f) * Vector3::Dot(n, Vector3(1.0f, 0.0f, 0.0f)) * 0.8f + Vector3(0.1f, 0.4f, 0.5f) * 1.2f;
         return { uint8_t(std::clamp(n.x, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.y, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.z, 0.0f, 1.0f) * 255) };
+        /*
+        n = Vector3(0.05f, 0.1f, 0.1f) * Vector3::Dot(n, Vector3(1.0f, 0.0f, 0.0f)) * 1.0f + Vector3(0.5f, 0.1f, 0.1f) * 0.2f;
+        */
+
+        uint8_t o[3] = { uint8_t(std::clamp(n.x, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.y, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.z, 0.0f, 1.0f) * 255) };
+
+
+        float cosi = std::clamp(-1.0f, 1.0f, Vector3::Dot(ray.direction, n)); 
+        float etai = 1, etat = 0.90; 
+        Vector3 m = n;
+        if (cosi < 0) { cosi = -cosi; } else { std::swap(etai, etat); m= n * -1.0f; } 
+        float eta = etai / etat; 
+        float k = 1 - eta * eta * (1 - cosi * cosi); 
+        Vector3 l = k < 0.0f ? Vector3(0.0f, 0.0f, 0.0f) : ray.direction * eta + m * (eta * cosi - sqrtf(k));
+
+        Vector3 bgHit = l.Normalized();
+        bool p = (uint8_t(atan2(bgHit.z, bgHit.x) * 33 + 20) % 2) != (uint8_t(bgHit.y * 33 + 20) % 2);
+        return { uint8_t(p * 150 + o[0]), uint8_t(p * 150 + o[1]), uint8_t(150 + o[2]) };
     }
     else
     {
-        return { 70, 0, 0 };
+        Vector3 bgHit = rayDir.Normalized();
+        bool p = (uint8_t(atan2(bgHit.z, bgHit.x) * 33 + 20) % 2) != (uint8_t(bgHit.y * 33 + 20) % 2);
+        return { uint8_t(p * 110 + 110), uint8_t(p * 110 + 110), uint8_t(110) };
+        //return { 110, 110, 110 };
     }
 }
 
@@ -118,12 +139,67 @@ Color Raytracer::GetPixel(uint16_t x, uint16_t y) const
     float inverseHeight = 1.0f / (float)m_ResolutionY;
     float aspectRatio = m_ResolutionX * inverseHeight;
     float fovTan = tan(m_FOV * 0.5f);
-    float rayX = (2 * (x * inverseWidth) - 1) * fovTan * aspectRatio;
-    float rayY = (2 * (y * inverseHeight) - 1) * fovTan;
-    return GetPixelInternal(m_Model->triangles, m_CameraPosition, rayX, rayY, m_UseKDTree ? m_KDTree.get() : nullptr);
+    Vector3 L = m_Left * ((2 * (x * inverseWidth) - 1) * fovTan * aspectRatio);
+    Vector3 D = m_Down * ((2 * (y * inverseHeight) - 1) * fovTan);
+    return GetPixelInternal(m_Model->triangles, m_CameraPosition, L + D + m_Forward, m_UseKDTree ? m_KDTree.get() : nullptr);
+}
+
+struct TraceThreadArgs
+{
+    int index;
+    const Raytracer* raytracer;
+};
+
+#define NUM_THREADS 16
+#define THREAD_STRIDE (480 / NUM_THREADS)
+
+static std::vector<Color> pixelArrays[NUM_THREADS];
+static void* TraceThread(void* _args)
+{
+    TraceThreadArgs args = *(TraceThreadArgs*)_args;
+    int yOff = args.index * THREAD_STRIDE;
+    std::vector<Color> pixels;
+    pixels.reserve(640 * THREAD_STRIDE);
+    for (uint16_t y = yOff; y < yOff + THREAD_STRIDE; ++y)
+    {
+        for (uint16_t x = 0; x < 640; ++x)
+        {
+            pixels.push_back(args.raytracer->GetPixel(x, y));
+        }
+    }
+    pixelArrays[args.index] = pixels;
+    return nullptr;
 }
 
 std::vector<Color> Raytracer::Trace() const
+{
+    pthread_t threads[NUM_THREADS];
+    TraceThreadArgs args[NUM_THREADS];
+    for (int i = 0; i < NUM_THREADS; i++)
+    {
+        args[i].index = i;
+        args[i].raytracer = this;
+        
+        pthread_create(&threads[i], nullptr, TraceThread, &args[i]);
+    }
+    for (int i = 0; i < NUM_THREADS; i++)
+    {
+        if (pthread_join(threads[i], NULL))
+        {
+           printf("o\n");
+        }
+    }
+    std::vector<Color> pixels;
+    pixels.reserve(m_ResolutionX * m_ResolutionY);
+
+    for (int i = 0; i < NUM_THREADS; i++)
+    {
+        pixels.insert(pixels.end(), pixelArrays[i].begin(), pixelArrays[i].end());
+    }
+    return pixels;
+}
+
+/*std::vector<Color> Raytracer::Trace() const
 {
     printf("Tracing pixels...\n");
     std::vector<Color> pixels;
@@ -136,13 +212,13 @@ std::vector<Color> Raytracer::Trace() const
         }
     }
     return pixels;
-}
+}*/
 
 void Raytracer::Setup()
 {
     AABB aabb;
     aabb.min = Vector3(-10, -10, -10);
     aabb.max = Vector3(10, 10, 10);
-    printf("Creating KDTree...\n");
+    printf("Creating kd-Tree...\n");
     m_KDTree = std::make_unique<KDTree>(m_Model->triangles, aabb);
 }
