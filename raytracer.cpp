@@ -86,7 +86,7 @@ static const Triangle* Travese(Ray& ray, const KDNode* node, float* outDistSq = 
     return nullptr;
 }
 
-static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, Vector3 rayDir, const KDTree* kdTree = nullptr)
+static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, Vector3 rayDir, uint8_t* skybox, uint16_t skyboxWidth, uint16_t skyboxHeight, const KDTree* kdTree = nullptr)
 {
     Ray ray = Ray(cameraPosition, rayDir.Normalized());
     const Triangle* triangle = nullptr;
@@ -127,9 +127,17 @@ static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vec
     else
     {
         Vector3 bgHit = rayDir.Normalized();
+        if (skybox != nullptr)
+        {
+            int x, y;
+            x = int(skyboxWidth * (atan2(bgHit.z, bgHit.x) / 8.0f));
+            y = int(skyboxHeight * (acos(bgHit.y) / ( M_PI)));
+            return { skybox[y * skyboxWidth * 3 + x * 3],
+                skybox[y * skyboxWidth * 3 + x * 3 + 1],
+                skybox[y * skyboxWidth * 3 + x * 3 + 2]};
+        }
         bool p = (uint8_t(atan2(bgHit.z, bgHit.x) * 33 + 20) % 2) != (uint8_t(bgHit.y * 33 + 20) % 2);
         return { uint8_t(p * 110 + 110), uint8_t(p * 110 + 110), uint8_t(110) };
-        //return { 110, 110, 110 };
     }
 }
 
@@ -141,28 +149,30 @@ Color Raytracer::GetPixel(uint16_t x, uint16_t y) const
     float fovTan = tan(m_FOV * 0.5f);
     Vector3 L = m_Left * ((2 * (x * inverseWidth) - 1) * fovTan * aspectRatio);
     Vector3 D = m_Down * ((2 * (y * inverseHeight) - 1) * fovTan);
-    return GetPixelInternal(m_Model->triangles, m_CameraPosition, L + D + m_Forward, m_UseKDTree ? m_KDTree.get() : nullptr);
+    return GetPixelInternal(m_Model->triangles, m_CameraPosition, L + D + m_Forward, m_Skybox, m_SkyboxWidth, m_SkyboxHeight, m_UseKDTree ? m_KDTree.get() : nullptr);
 }
 
 struct TraceThreadArgs
 {
     int index;
+    uint16_t width;
+    uint16_t height;
     const Raytracer* raytracer;
 };
 
 #define NUM_THREADS 16
-#define THREAD_STRIDE (480 / NUM_THREADS)
 
 static std::vector<Color> pixelArrays[NUM_THREADS];
 static void* TraceThread(void* _args)
 {
     TraceThreadArgs args = *(TraceThreadArgs*)_args;
+    #define THREAD_STRIDE (args.height / NUM_THREADS)
     int yOff = args.index * THREAD_STRIDE;
     std::vector<Color> pixels;
-    pixels.reserve(640 * THREAD_STRIDE);
+    pixels.reserve(args.width * THREAD_STRIDE);
     for (uint16_t y = yOff; y < yOff + THREAD_STRIDE; ++y)
     {
-        for (uint16_t x = 0; x < 640; ++x)
+        for (uint16_t x = 0; x < args.width; ++x)
         {
             pixels.push_back(args.raytracer->GetPixel(x, y));
         }
@@ -177,6 +187,8 @@ std::vector<Color> Raytracer::Trace() const
     TraceThreadArgs args[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++)
     {
+        args[i].width = m_ResolutionX;
+        args[i].height = m_ResolutionY;
         args[i].index = i;
         args[i].raytracer = this;
         

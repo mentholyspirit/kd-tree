@@ -30,6 +30,9 @@ static void onMouse(int event, int x, int y, int, void*)
     s_LastMousePosition = Vector3(x, y, 0.0f);
 }
 
+#define WINDOW_WIDTH 640
+#define WINDOW_HEIGHT 480
+
 int main(int argc, char** argv)
 {
     bool useKDTree = true;
@@ -44,9 +47,11 @@ int main(int argc, char** argv)
             useKDTree = false;
     }
 
+
+    cv::Mat skybox = imread("environment_map.jpg", CV_LOAD_IMAGE_COLOR);
     
 
-    uint16_t width = 640, height = 480;
+    uint16_t width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
     std::unique_ptr<PLY_Model> model = Read_PLY_Model(argv[1]);
     Raytracer raytracer;
     raytracer.SetModel(model.get());
@@ -54,20 +59,21 @@ int main(int argc, char** argv)
     raytracer.SetFOV((float)M_PI / 6.0f);
     raytracer.SetCameraPosition(Vector3(0.0f, 0.15f, 0.5f));
     raytracer.Setup();
+    raytracer.SetSkybox(skybox.data, skybox.cols, skybox.rows);
     //My favourite food is spaghetti 🍝, favourite color is vantablack 🏴 and favourite animal is hedgehog 🦔
     raytracer.SetUseKDTree(useKDTree);
     //Write_Tga("image.tga", width, height, raytracer.Trace().data());
 
-
+#if 0
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::high_resolution_clock::now();
     raytracer.Trace();
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> buildTime = end - start;
     std::cout <<  "Done. Took " << buildTime.count() << " seconds." << std::endl;
-
+#endif
 #if 1
 
-    Mat im = Mat(480, 640, CV_8UC3);
+    Mat im = Mat(WINDOW_HEIGHT, WINDOW_WIDTH, CV_8UC3);
     namedWindow("Display window", WINDOW_AUTOSIZE);
     setMouseCallback("Display window", onMouse, 0);
 

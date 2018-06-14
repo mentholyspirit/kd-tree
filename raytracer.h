@@ -62,6 +62,13 @@ public:
         m_UseKDTree = useKDTree;
     }
 
+    void SetSkybox(uint8_t* data, uint16_t width, uint16_t height)
+    {
+        m_Skybox = data;
+        m_SkyboxWidth = width;
+        m_SkyboxHeight = height;
+    }
+
     void Setup();
 
     Color GetPixel(uint16_t x, uint16_t y) const;
@@ -79,4 +86,7 @@ private:
     Vector3 m_Down;
     std::unique_ptr<KDTree> m_KDTree;
     bool m_UseKDTree;
+    uint8_t* m_Skybox;
+    uint16_t m_SkyboxWidth;
+    uint16_t m_SkyboxHeight;
 };
