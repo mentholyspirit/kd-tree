@@ -23,6 +23,6 @@ Usage kd_tree_raytracer <ply_model_path>
 The program renders the highest resolution happy buddha model at 640x480 resolution at 6 seconds on a 2,3 GHz Intel Core i7. 
 
 
-Here's a capture of the interactive mode:
+Here's a capture of the interactive mode (happy buddha, 1M triangles, 640x480 - 0.1s for actual rendering after kd-tree creation):
 
 ![Alt Text](https://media.giphy.com/media/w7S6cdmybTfLOIwdBQ/giphy.gif)
