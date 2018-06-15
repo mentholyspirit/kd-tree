@@ -126,18 +126,7 @@ static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vec
     }
     else
     {
-        Vector3 bgHit = rayDir.Normalized();
-        if (skybox != nullptr)
-        {
-            int x, y;
-            x = int(skyboxWidth * (atan2(bgHit.z, bgHit.x) / 8.0f));
-            y = int(skyboxHeight * (acos(bgHit.y) / ( M_PI)));
-            return { skybox[y * skyboxWidth * 3 + x * 3],
-                skybox[y * skyboxWidth * 3 + x * 3 + 1],
-                skybox[y * skyboxWidth * 3 + x * 3 + 2]};
-        }
-        bool p = (uint8_t(atan2(bgHit.z, bgHit.x) * 33 + 20) % 2) != (uint8_t(bgHit.y * 33 + 20) % 2);
-        return { uint8_t(p * 110 + 110), uint8_t(p * 110 + 110), uint8_t(110) };
+        return { 200, 50, 50 };
     }
 }
 
@@ -196,10 +185,7 @@ std::vector<Color> Raytracer::Trace() const
     }
     for (int i = 0; i < NUM_THREADS; i++)
     {
-        if (pthread_join(threads[i], NULL))
-        {
-           printf("o\n");
-        }
+        pthread_join(threads[i], NULL);
     }
     std::vector<Color> pixels;
     pixels.reserve(m_ResolutionX * m_ResolutionY);

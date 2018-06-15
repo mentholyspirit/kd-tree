@@ -8,9 +8,9 @@ CXXFLAGS += -I/usr/local/opt/opencv@2/include
 
 ALL_SOURCES := $(wildcard *.cpp)
 ALL_HEADERS := $(wildcard *.h)
-MAIN_CPP := hmq_test.cpp
+MAIN_CPP := kd_tree_raytracer.cpp
 TEST_CPP := unit_test.cpp
-MAIN_EXECUTABLE := hmq_test
+MAIN_EXECUTABLE := kd_tree_raytracer
 TEST_EXECUTABLE := unit_test
 UNIT_TEST_SOURCES := $(filter-out $(MAIN_CPP), $(ALL_SOURCES))
 MAIN_SOURCES := $(filter-out $(TEST_CPP), $(ALL_SOURCES))
