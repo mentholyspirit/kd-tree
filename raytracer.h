@@ -8,6 +8,34 @@ struct Color
     uint8_t r;
     uint8_t g;
     uint8_t b;
+
+
+    Color() {}
+    Color(uint8_t _r, uint8_t _g, uint8_t _b)
+    {
+        r = _r; g = _g; b = _b;
+    }
+
+    inline Color operator*(float s)
+    {
+        return { uint8_t(std::clamp(r * s, 0.0f, 255.0f)), uint8_t(std::clamp(g * s, 0.0f, 255.0f)), uint8_t(std::clamp(b * s, 0.0f, 255.0f)) };
+    }
+
+
+    inline Color operator*(const Color& other)
+    {
+        return { uint8_t(std::clamp(r * (other.r / 255.0f), 0.0f, 255.0f)), uint8_t(std::clamp(g * (other.g / 255.0f), 0.0f, 255.0f)), uint8_t(std::clamp(b * (other.b / 255.0f), 0.0f, 255.0f)) };
+    }
+
+    inline Color operator+(const Color& other)
+    {
+        return { uint8_t(std::clamp(r + other.r, 0, 255)), uint8_t(std::clamp(g + other.g, 0, 255)), uint8_t(std::clamp(b + other.b, 0, 255)) };
+    }
+
+    inline Color operator-(const Color& other)
+    {
+        return { uint8_t(std::clamp(r - other.r, 0, 255)), uint8_t(std::clamp(g - other.g, 0, 255)), uint8_t(std::clamp(b - other.b, 0, 255)) };
+    }
 };
 
 class Raytracer

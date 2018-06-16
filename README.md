@@ -25,4 +25,4 @@ The program renders the highest resolution happy buddha model at 640x480 resolut
 
 Here's a capture of the interactive mode (happy buddha, 1M triangles, 640x480 - 0.1s for actual rendering after kd-tree creation):
 
-![Alt Text](https://media.giphy.com/media/w7S6cdmybTfLOIwdBQ/giphy.gif)
+![Alt Text](https://media.giphy.com/media/1fhIuQTUSA3Z8W0iuw/giphy.gif)

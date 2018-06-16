@@ -33,3 +33,7 @@ all : build run_test
 .PHONY : clean
 clean :
 	rm -f *.o $(MAIN_EXECUTABLE) $(TEST_EXECUTABLE)
+
+.PHONY : run
+run :
+	./kd_tree_raytracer happy_vrip.ply --interactive

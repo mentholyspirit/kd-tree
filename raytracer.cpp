@@ -24,24 +24,24 @@ static inline bool TestTriangle(const Triangle& triangle, const Ray& ray, float*
     return true;
 }
 
-static inline const Triangle* TestTriangles(const std::vector<Triangle>& triangles, const Ray& ray, float* outDistSq)
+static inline const Triangle* TestTriangles(const std::vector<Triangle>& triangles, const Ray& ray, float* outDist)
 {
-    *outDistSq = std::numeric_limits<float>::max();
+    *outDist = std::numeric_limits<float>::max();
     const Triangle* result = nullptr;
     for (int i = 0; i < triangles.size(); ++i)
     {
         float t;
-        if (TestTriangle(triangles[i], ray, &t) && t < *outDistSq)
+        if (TestTriangle(triangles[i], ray, &t) && t < *outDist)
         {
             result = &triangles[i];
-            *outDistSq = t;
+            *outDist = t;
         }
     }
     return result;
 }
 
 //traverse through nodes in the KDTree, return the closest triangle
-static const Triangle* Travese(Ray& ray, const KDNode* node, float* outDistSq = nullptr)
+static const Triangle* Travese(Ray& ray, const KDNode* node, float* outDist = nullptr)
 {
     if (node->GetAABB().Intersects(ray))
     {
@@ -63,70 +63,95 @@ static const Triangle* Travese(Ray& ray, const KDNode* node, float* outDistSq = 
             }
             if (leftTri && distL <= distR)
             {
-                if (outDistSq)
+                if (outDist)
                 {
-                    *outDistSq = distL;
+                    *outDist = distL;
                 }
                 return leftTri;
             }
             if (rightTri)
             {
-                if (outDistSq)
+                if (outDist)
                 {
-                    *outDistSq = distR;
+                    *outDist = distR;
                 }
                 return rightTri;
             }
         }
         else
         {
-            return TestTriangles(node->GetTriangles(), ray, outDistSq);
+            return TestTriangles(node->GetTriangles(), ray, outDist);
         }
     }
     return nullptr;
 }
 
-static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, Vector3 rayDir, uint8_t* skybox, uint16_t skyboxWidth, uint16_t skyboxHeight, const KDTree* kdTree = nullptr)
+static inline Vector3 IndexOfRefraction(const Vector3& rayDir, const Vector3& normal)
+{
+    float cosi = std::clamp(-1.0f, 1.0f, Vector3::Dot(rayDir, normal));
+    float etai = 1, etat = 0.90;
+    Vector3 n = normal;
+    if (cosi < 0)
+    {
+        cosi = -cosi;
+    }
+    else
+    {
+        std::swap(etai, etat);
+        n = normal * -1.0f;
+    }
+    float eta = etai / etat;
+    float k = 1 - eta * eta * (1 - cosi * cosi);
+    Vector3 l = k < 0.0f ? Vector3(0.0f, 0.0f, 0.0f) : rayDir * eta + n * (eta * cosi - sqrtf(k));
+    return l.Normalized();
+}
+
+static inline Color SampleBackground(const Vector3& rayDir)
+{
+    float y = atan2(rayDir.x, rayDir.z) / (M_PI * 2.0f) + 0.5f;
+    float xz = acos(rayDir.y) / M_PI;
+    auto f = (int(xz * 10) % 2) != (int(y * 20) % 2);
+    return { uint8_t(f * 255), uint8_t(f * 255), uint8_t(f * 255) };
+}
+
+static inline Color GetPixelInternal(const std::vector<Triangle>& triangles, Vector3 cameraPosition, Vector3 rayDir, int depth, const KDTree* kdTree = nullptr)
 {
     Ray ray = Ray(cameraPosition, rayDir.Normalized());
     const Triangle* triangle = nullptr;
+    float outDist;
     if (kdTree != nullptr)
     {
-        triangle = Travese(ray, kdTree->GetRoot());
+        triangle = Travese(ray, kdTree->GetRoot(), &outDist);
     }
     else
     {
-        float outDistSq;
-        triangle = TestTriangles(triangles, ray, &outDistSq);
+        triangle = TestTriangles(triangles, ray, &outDist);
     }
     if (triangle)
     {
-        // "shading"
         Vector3 n = triangle->GetNormal();
-        n = Vector3(0.5f, 1.0f, 1.0f) * Vector3::Dot(n, Vector3(1.0f, 0.0f, 0.0f)) * 0.8f + Vector3(0.1f, 0.4f, 0.5f) * 1.2f;
-        return { uint8_t(std::clamp(n.x, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.y, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.z, 0.0f, 1.0f) * 255) };
-        /*
-        n = Vector3(0.05f, 0.1f, 0.1f) * Vector3::Dot(n, Vector3(1.0f, 0.0f, 0.0f)) * 1.0f + Vector3(0.5f, 0.1f, 0.1f) * 0.2f;
-        */
 
-        uint8_t o[3] = { uint8_t(std::clamp(n.x, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.y, 0.0f, 1.0f) * 255), uint8_t(std::clamp(n.z, 0.0f, 1.0f) * 255) };
+        Vector3 rayDir = IndexOfRefraction(ray.direction, n);
 
+        Color bg = SampleBackground(rayDir);
 
-        float cosi = std::clamp(-1.0f, 1.0f, Vector3::Dot(ray.direction, n)); 
-        float etai = 1, etat = 0.90; 
-        Vector3 m = n;
-        if (cosi < 0) { cosi = -cosi; } else { std::swap(etai, etat); m= n * -1.0f; } 
-        float eta = etai / etat; 
-        float k = 1 - eta * eta * (1 - cosi * cosi); 
-        Vector3 l = k < 0.0f ? Vector3(0.0f, 0.0f, 0.0f) : ray.direction * eta + m * (eta * cosi - sqrtf(k));
+        Vector3 phit = ray.origin + ray.direction * outDist;
 
-        Vector3 bgHit = l.Normalized();
-        bool p = (uint8_t(atan2(bgHit.z, bgHit.x) * 33 + 20) % 2) != (uint8_t(bgHit.y * 33 + 20) % 2);
-        return { uint8_t(p * 150 + o[0]), uint8_t(p * 150 + o[1]), uint8_t(150 + o[2]) };
+        float cosX = -Vector3::Dot(ray.direction, n);
+        float fresnel = pow(1 - cosX, 3);
+
+        float bias = 1e-4;
+        Vector3 refldir = ray.direction - n * 2.0f * Vector3::Dot(ray.direction, n);
+        refldir = refldir.Normalized();
+        Color reflection;
+        Color refraction;
+        reflection = SampleBackground(refldir);
+        refraction = SampleBackground(rayDir);
+        return (reflection * fresnel + refraction * (1.0f - fresnel) * 0.6f) * Color(255, 150, 150);
     }
     else
     {
-        return { 200, 50, 50 };
+        return SampleBackground(ray.direction);
     }
 }
 
@@ -138,7 +163,7 @@ Color Raytracer::GetPixel(uint16_t x, uint16_t y) const
     float fovTan = tan(m_FOV * 0.5f);
     Vector3 L = m_Left * ((2 * (x * inverseWidth) - 1) * fovTan * aspectRatio);
     Vector3 D = m_Down * ((2 * (y * inverseHeight) - 1) * fovTan);
-    return GetPixelInternal(m_Model->triangles, m_CameraPosition, L + D + m_Forward, m_Skybox, m_SkyboxWidth, m_SkyboxHeight, m_UseKDTree ? m_KDTree.get() : nullptr);
+    return GetPixelInternal(m_Model->triangles, m_CameraPosition, L + D + m_Forward, 0, m_UseKDTree ? m_KDTree.get() : nullptr);
 }
 
 struct TraceThreadArgs
